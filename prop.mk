@@ -59,7 +59,7 @@ media.camera.ts.monotonic=1 \
 persist.camera.gyro.disable=0 \
 persist.camera.isp.clock.optmz=0 \
 persist.camera.stats.test=5 \
-persist.vendor.qti.telephony.vt_cam_interface=1 \
+persist.vendor.qti.telephony.vt_cam_interface=2 \
 vidc.enc.dcvs.extra-buff-count=2
 
 # Cne
@@ -201,6 +201,7 @@ ro.telephony.call_ring.multiple=false \
 ro.telephony.default_network=22,22 \
 ro.telephony.use_old_mnc_mcc_format=true \
 service.qti.ims.enabled=1 \
+ro.telephony.iwlan_operation_mode=legacy \
 vendor.rild.libpath=/vendor/lib64/libril-qc-qmi-1.so \
 telephony.lteOnCdmaDevice=1 \
 persist.sys.fflag.override.settings_network_and_internet_v2=true
@@ -272,3 +273,8 @@ PRODUCT_PROPERTY_OVERRIDES += \
 PRODUCT_PROPERTY_OVERRIDES += \
     spectrum.support=1 \
     persist.spectrum.kernel=Parallax
+
+# Fling Velocity
+PRODUCT_PROPERTY_OVERRIDES += \
+ro.min.fling_velocity=160 \
+ro.max.fling_velocity=20000

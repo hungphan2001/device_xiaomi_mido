@@ -34,10 +34,24 @@ import /vendor/etc/init/hw/init.cpuboost.rc
 import /vendor/etc/init/hw/init.parallax.rc
 
 on early-init
+    # Disable EAS
+    write /sys/kernel/debug/sched_features NO_ENERGY_AWARE
     mount debugfs debugfs /sys/kernel/debug
     chmod 0755 /sys/kernel/debug
     chown root system /dev/kmsg
     chmod 0620 /dev/kmsg
+
+on init
+    #ZRAM Paramaters
+    write /sys/block/zram0/comp_algorithm lz4
+    write /sys/block/zram0/disksize 1073741824
+    write /sys/block/zram0/max_comp_streams 8
+    write /proc/sys/vm/page-cluster 0
+
+    # set default schedTune value for foreground/top-app (only affects EAS)
+    write /dev/stune/foreground/schedtune.prefer_idle 1
+    write /dev/stune/top-app/schedtune.boost 1
+    write /dev/stune/top-app/schedtune.prefer_idle 1
 
 on post-fs
     chmod 0755 /sys/kernel/debug/tracing
@@ -134,8 +148,18 @@ on boot
     chmod 0666 /sys/class/power_supply/battery/input_suspend
 
     # Vibration
-    chown system system /sys/devices/virtual/timed_output/vibrator/vtg_level
-    chmod 0660 /sys/devices/virtual/timed_output/vibrator/vtg_level
+    chown root system /sys/class/timed_output/vibrator/vtg_level
+    chmod 0660 /sys/class/timed_output/vibrator/vtg_level
+    chown system system /sys/class/timed_output/vibrator/vmax_mv
+    chmod 0660 /sys/class/timed_output/vibrator/vmax_mv
+
+    # Vibrator Permissions
+    chown system system /sys/devices/platform/soc/200f000.qcom,spmi/spmi-0/spmi0-03/200f000.qcom,spmi:qcom,pmi8950@3:qcom,haptics@c000/leds/vibrator/vmax_override
+    chmod 0660 /sys/devices/platform/soc/200f000.qcom,spmi/spmi-0/spmi0-03/200f000.qcom,spmi:qcom,pmi8950@3:qcom,haptics@c000/leds/vibrator/vmax_override
+    write /sys/devices/platform/soc/200f000.qcom,spmi/spmi-0/spmi0-03/200f000.qcom,spmi:qcom,pmi8950@3:qcom,haptics@c000/leds/vibrator/vmax_override 1
+    chown system system /sys/devices/platform/soc/200f000.qcom,spmi/spmi-0/spmi0-03/200f000.qcom,spmi:qcom,pmi8950@3:qcom,haptics@c000/leds/vibrator/vmax_mv_user
+    chown system system /sys/devices/platform/soc/200f000.qcom,spmi/spmi-0/spmi0-03/200f000.qcom,spmi:qcom,pmi8950@3:qcom,haptics@c000/leds/vibrator/vmax_mv_call
+    chown system system /sys/devices/platform/soc/200f000.qcom,spmi/spmi-0/spmi0-03/200f000.qcom,spmi:qcom,pmi8950@3:qcom,haptics@c000/leds/vibrator/vmax_mv_strong
 
     # KCal
     chown system system /sys/devices/platform/kcal_ctrl.0/kcal_cont
@@ -315,6 +339,9 @@ on post-fs-data
     write /sys/class/thermal/thermal_message/sconfig 0
 
 on property:sys.boot_completed=1
+    # Enable EAS
+    write /sys/kernel/debug/sched_features ENERGY_AWARE
+
     write /dev/kmsg "Boot completed "
     #Reset read ahead for dm-0 and dm-1 to 512kb
     write /sys/block/dm-0/queue/read_ahead_kb 512
@@ -384,6 +411,11 @@ service qcom-sh /vendor/bin/init.qcom.sh
 on property:ro.vendor.ril.mbn_copy_completed=1
     write /data/vendor/radio/copy_complete 1
 
+service vendor.qcom-c_main-sh /vendor/bin/init.class_main.sh
+    class main
+    user root
+    oneshot
+
 service qcom-post-boot /vendor/bin/init.qcom.post_boot.sh
     class late_start
     user root
@@ -438,6 +470,11 @@ on charger
     setprop persist.sys.usb.config mass_storage
     load_system_props
     start qcom-post-boot
+    # Enable EAS
+    write /sys/kernel/debug/sched_features ENERGY_AWARE
+
+    # Enable powersaving
+    write /sys/module/lpm_levels/parameters/sleep_disabled 0
 
 service vendor.audio-hal-2-0 /vendor/bin/hw/android.hardware.audio@2.0-service
     override
@@ -461,3 +498,8 @@ service vendor.power_off_alarm /vendor/bin/power_off_alarm
     group system
     disabled
     oneshot
+
+on property:dev.bootcomplete=1
+
+    # Enable EAS PowerHAL
+    setprop vendor.powerhal.init 1

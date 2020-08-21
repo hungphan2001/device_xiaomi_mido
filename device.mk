@@ -133,6 +133,7 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     android.hardware.camera.provider@2.4-impl \
     android.hardware.camera.provider@2.4-service \
+    android.hardware.camera.common@1.0 \
     camera.msm8953 \
     libmm-qcamera
 
@@ -158,6 +159,7 @@ PRODUCT_PACKAGES += \
     gralloc.msm8953 \
     memtrack.msm8953 \
     libdisplayconfig \
+    libvulkan \
     liboverlay \
     libqdMetaData.system \
     libgenlock \
@@ -288,10 +290,10 @@ PRODUCT_PACKAGES += \
 
 # Power
 PRODUCT_PACKAGES += \
-    android.hardware.power@1.2-service-qti
+    android.hardware.power@1.3-service.mido-libperfmgr \
+    powerhint.json
 
 PRODUCT_COPY_FILES += \
-    $(LOCAL_PATH)/configs/powerhint.xml:$(TARGET_COPY_OUT_VENDOR)/etc/powerhint.xml \
     $(LOCAL_PATH)/configs/perf/perf-profile0.conf:$(TARGET_COPY_OUT_VENDOR)/etc/perf/perf-profile0.conf
 
 # QMI
@@ -305,6 +307,7 @@ PRODUCT_PACKAGES += \
     init.msm.usb.configfs.rc \
     init.qcom.early_boot.sh \
     init.qcom.post_boot.sh \
+    init.class_main.sh \
     init.qcom.rc \
     init.qcom.sh \
     init.qcom.usb.rc \

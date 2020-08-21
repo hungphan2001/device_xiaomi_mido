@@ -26,9 +26,6 @@
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 #
-on early-init
-    write /proc/sys/kernel/sched_boost 1
-
 on fs
     wait /dev/block/platform/soc/${ro.boot.bootdevice}
     symlink /dev/block/platform/soc/${ro.boot.bootdevice} /dev/block/bootdevice
@@ -41,6 +38,12 @@ on fs
     restorecon_recursive /mnt/vendor/persist
 
 on init
+    # Disable UFS powersaving
+    write /sys/devices/soc/${ro.boot.bootdevice}/clkscale_enable 0
+    write /sys/devices/soc/${ro.boot.bootdevice}/clkgate_enable 0
+    write /sys/devices/soc/${ro.boot.bootdevice}/hibern8_on_idle_enable 0
+    write /sys/module/lpm_levels/parameters/sleep_disabled Y
+
     write /dev/stune/foreground/schedtune.sched_boost_no_override 1
     write /dev/stune/top-app/schedtune.sched_boost_no_override 1
     write /dev/stune/schedtune.colocate 0
@@ -49,12 +52,100 @@ on init
     write /dev/stune/top-app/schedtune.colocate 1
     write /sys/module/qpnp_rtc/parameters/poweron_alarm 1
 
-# Add a cpuset for the camera daemon
+    # Add a cpuset for the camera daemon
     mkdir /dev/cpuset/camera-daemon 0750 cameraserver cameraserver
     write /dev/cpuset/camera-daemon/cpus 0-7
     write /dev/cpuset/camera-daemon/mems 0
     chown cameraserver cameraserver /dev/cpuset/camera-daemon/tasks
     chmod 0660 /dev/cpuset/camera-daemon/tasks
+
+    # Create an stune group for camera-specific processes
+    mkdir /dev/stune/camera-daemon
+    write /dev/stune/camera-daemon/schedtune.prefer_idle 1
+    write /dev/stune/camera-daemon/schedtune.boost 0
+    chown system system /dev/stune/camera-daemon
+    chown system system /dev/stune/camera-daemon/tasks
+    chmod 0664 /dev/stune/camera-daemon/tasks
+
+    mkdir /dev/cpuset/system 0750 root system
+    write /dev/cpuset/system/cpus 0
+    write /dev/cpuset/system/mems 0
+    chown system system /dev/cpuset/system/tasks
+    chmod 0660 /dev/cpuset/system/tasks
+
+    mkdir /dev/cpuset/system/performance 0750 root system
+    write /dev/cpuset/system/performance/cpus 0
+    write /dev/cpuset/system/performance/mems 0
+    chown system system /dev/cpuset/system/performance/tasks
+    chmod 0660 /dev/cpuset/system/performance/tasks
+
+    mkdir /dev/cpuset/system/background 0750 root system
+    write /dev/cpuset/system/background/cpus 0
+    write /dev/cpuset/system/background/mems 0
+    chown system system /dev/cpuset/system/background/tasks
+    chmod 0660 /dev/cpuset/system/background/tasks
+
+    mkdir /dev/cpuset/application 0750 root system
+    write /dev/cpuset/application/cpus 0
+    write /dev/cpuset/application/mems 0
+    chown system system /dev/cpuset/application/tasks
+    chmod 0660 /dev/cpuset/application/tasks
+
+    mkdir /dev/cpuset/application/performance 0750 root system
+    write /dev/cpuset/application/performance/cpus 0
+    write /dev/cpuset/application/performance/mems 0
+    chown system system /dev/cpuset/application/performance/tasks
+    chmod 0660 /dev/cpuset/application/performance/tasks
+
+    mkdir /dev/cpuset/application/background 0750 root system
+    write /dev/cpuset/application/background/cpus 0
+    write /dev/cpuset/application/background/mems 0
+    chown system system /dev/cpuset/application/background/tasks
+    chmod 0660 /dev/cpuset/application/background/tasks
+
+    write /dev/cpuset/kernel/cpus 0-7
+    write /dev/cpuset/system/cpus 0-7
+    write /dev/cpuset/system/performance/cpus 0-7
+    write /dev/cpuset/system/background/cpus 0-7
+    write /dev/cpuset/system/cpus 0-7
+    write /dev/cpuset/application/cpus 0-7
+    write /dev/cpuset/application/performance/cpus 0-7
+    write /dev/cpuset/application/background/cpus 0-7
+    write /dev/cpuset/application/cpus 0-7
+
+    # Setup permission for powerHAL
+    chown system system /dev/stune/top-app/schedtune.boost
+    chown system system /sys/class/kgsl/kgsl-3d0/devfreq/min_freq
+    chown system system /sys/class/kgsl/kgsl-3d0/devfreq/max_freq
+    chown system system /sys/class/kgsl/kgsl-3d0/min_freq
+    chown system system /sys/class/kgsl/kgsl-3d0/max_freq
+    chown system system /sys/class/devfreq/soc:qcom,gpubw/min_freq
+    chown system system dev/stune/camera-daemon/schedtune.boost
+    chown system system /dev/cpuset/camera-daemon/cpus
+    chown system system /sys/class/devfreq/soc:qcom,cpu6-cpu-l3-lat/min_freq
+    chown system system /sys/devices/platform/soc/1d84000.ufshc/clkgate_enable
+    chown system system /sys/devices/platform/soc/1d84000.ufshc/hibern8_on_idle_enable
+    chown system system /sys/kernel/debug/sched_features
+    chown system system /sys/devices/soc/soc:qcom,cpubw/devfreq/soc:qcom,cpubw/bw_hwmon/hyst_trigger_count
+    chown system system /sys/devices/soc/soc:qcom,cpubw/devfreq/soc:qcom,cpubw/bw_hwmon/hist_memory
+    chown system system /sys/devices/soc/soc:qcom,cpubw/devfreq/soc:qcom,cpubw/bw_hwmon/hyst_length
+    chown system system /sys/devices/soc/soc:qcom,cpubw/devfreq/soc:qcom,cpubw/min_freq
+
+    chmod 0664 /sys/class/kgsl/kgsl-3d0/devfreq/min_freq
+    chmod 0664 /sys/class/kgsl/kgsl-3d0/devfreq/max_freq
+    chmod 0664 /sys/class/kgsl/kgsl-3d0/min_freq
+    chmod 0664 /sys/class/kgsl/kgsl-3d0/max_freq
+    chmod 0664 /sys/class/devfreq/soc:qcom,gpubw/min_freq
+    chmod 0664 dev/stune/camera-daemon/schedtune.boost
+    chmod 0664 /dev/cpuset/camera-daemon/cpus
+    chmod 0664 /sys/class/devfreq/soc:qcom,cpu6-cpu-l3-lat/min_freq
+    chmod 0664 /sys/devices/platform/soc/1d84000.ufshc/clkgate_enable
+    chmod 0664 /sys/devices/platform/soc/1d84000.ufshc/hibern8_on_idle_enable
+    chmod 0664 /sys/kernel/debug/sched_features
+    chmod 0664 /sys/devices/soc/soc:qcom,cpubw/devfreq/soc:qcom,cpubw/bw_hwmon/hyst_trigger_count
+    chmod 0664 /sys/devices/soc/soc:qcom,cpubw/devfreq/soc:qcom,cpubw/bw_hwmon/hist_memory
+    chmod 0664 /sys/devices/soc/soc:qcom,cpubw/devfreq/soc:qcom,cpubw/bw_hwmon/hyst_length
+    chmod 0664 /sys/devices/soc/soc:qcom,cpubw/devfreq/soc:qcom,cpubw/min_freq
 
 on post-fs
     start vendor.qseecomd
@@ -158,15 +249,36 @@ on charger
     start vendor.power_off_alarm
     start thermal-engine
 
+    # Enable UFS powersaving
+    write /sys/devices/soc/${ro.boot.bootdevice}/clkscale_enable 1
+    write /sys/devices/soc/${ro.boot.bootdevice}/clkgate_enable 1
+    write /sys/devices/soc/${ro.boot.bootdevice}/hibern8_on_idle_enable 1
+    write /sys/class/typec/port0/port_type sink
+    write /sys/module/lpm_levels/parameters/sleep_disabled N
+
 on boot
     chown system system /sys/kernel/hbtp/display_pwr
 
+    # Create an stune group for the camera-daemon
+    mkdir /dev/stune/camera-daemon
+    write /dev/stune/camera-daemon/schedtune.prefer_idle 1
+    write /dev/stune/camera-daemon/schedtune.boost 0
+    chown system system /dev/stune/camera-daemon
+    chown system system /dev/stune/camera-daemon/tasks
+    chmod 0660 /dev/stune/camera-daemon/tasks
+
 # Update cpusets on boot and we want better load balancing
+    write /dev/cpuset/audio-app/cpus 0-1
     write /dev/cpuset/top-app/cpus 0-7
-    write /dev/cpuset/foreground/cpus 0-6
     write /dev/cpuset/background/cpus 0-1
     write /dev/cpuset/system-background/cpus 0-3
     write /dev/cpuset/restricted/cpus 0-3
+
+    # Enable UFS powersaving
+    write /sys/devices/soc/${ro.boot.bootdevice}/clkscale_enable 1
+    write /sys/devices/soc/${ro.boot.bootdevice}/clkgate_enable 1
+    write /sys/devices/soc/${ro.boot.bootdevice}/hibern8_on_idle_enable 1
+    write /sys/module/lpm_levels/parameters/sleep_disabled N
 
 # access permission for wlan
     chown system system /mnt/vendor/persist/WCNSS_qcom_wlan_nv.bin
@@ -211,6 +323,12 @@ on boot
   chmod 0660 /sys/devices/platform/kcal_ctrl.0/kcal_val
 
 # Vibrator permissions
+  chown system system /sys/class/leds/vibrator/vmax_mv_user
+  chown system system /sys/class/leds/vibrator/vmax_mv_call
+  chown system system /sys/class/leds/vibrator/vmax_mv_strong
+  chown system system sys/class/leds/vibrator/vmax_override
+  chmod 0660 /sys/class/leds/vibrator/vmax_override
+  write /sys/class/leds/vibrator/vmax_override 1
   chown root system /sys/class/timed_output/vibrator/vtg_level
   chmod 0660 /sys/class/timed_output/vibrator/vtg_level
 
